@@ -461,7 +461,7 @@ window.rebuildQrView = function(batchId, productName) {
     qrContainer.innerHTML = "";
     
     // Construct the direct deep-link parameter route pointing straight to your client gateway validation engine
-    const clientVerificationGatewayUrl = `${window.location.origin}/patient.html?batch=${encodeURIComponent(batchId)}`;
+   const clientVerificationGatewayUrl = `${window.location.origin}/pims-tracker/patient.html?batch=${encodeURIComponent(batchId)}`;
     
     try {
         // Fire the matrix compiler to draw the responsive slate pixels directly into the container view
