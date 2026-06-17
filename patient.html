@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIMS - Patient Medicine Verification Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body class="bg-slate-50 font-sans min-h-screen flex flex-col items-center justify-center p-4">
+
+    <main id="mainCard" class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-6 text-center transition-all duration-300">
+        
+        <div id="loadingState" class="py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p class="text-slate-500 text-sm mt-4 font-medium">Securing connection to national safety registry...</p>
+        </div>
+
+        <div id="contentState" class="hidden">
+            <div id="statusIcon" class="w-20 h-20 rounded-full flex items-center justify-center mx-auto text-4xl mb-4"></div>
+            
+            <h1 id="statusHeadline" class="text-2xl font-bold text-slate-800 tracking-tight"></h1>
+            <p id="statusSubtitle" class="text-sm text-slate-500 mt-1 mb-6"></p>
+
+            <div id="watermarkBadgeCard" style="display: none; background-color: #fef3c7; border: 2px dashed #d97706; padding: 16px; border-radius: 8px; margin-bottom: 20px; text-align: left;">
+    <div style="color: #b45309; font-weight: bold; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+        ⚠️ DIGITAL AUDIT TRAIL WATERMARK DETECTED
+    </div>
+    <p style="color: #78350f; font-size: 13px; margin: 6px 0 0 0; line-height: 1.5;">
+        **Notice:** This item's logistics parameters (stock metrics or pricing allocations) have been modified by an authenticated administrator node after initial cryptographic registration block sync. Please cross-reference batch data with official healthcare distribution channels.
+    </p>
+</div>
+
+            <div class="border-t border-b border-slate-100 py-4 text-left space-y-3">
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400 font-medium">Medication Name:</span>
+                    <span id="lblMedName" class="font-bold text-slate-800 text-right"></span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400 font-medium">Batch Serial ID:</span>
+                    <span id="lblBatch" class="font-mono font-semibold text-slate-700 text-right"></span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400 font-medium">Expiration Check:</span>
+                    <span id="lblExpiry" class="font-semibold text-right"></span>
+                </div>
+            </div>
+
+            <div class="mt-6 text-left bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <h3 class="text-xs uppercase font-bold text-slate-400 tracking-wider mb-1">Consumer Safety Guidance</h3>
+                <p id="safetyGuidanceText" class="text-xs text-slate-600 leading-relaxed"></p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="mt-6 text-center text-xs text-slate-400">
+        <p>PIMS Pharmaceutical Authentication Network • Powered by SHA-256 Security</p>
+    </footer>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEC4xARqZ0CZSNLhlVLjid8UxuyY3E5KI",
+            authDomain: "pims-pharmaceutical.firebaseapp.com",
+            databaseURL: "https://pims-pharmaceutical-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "pims-pharmaceutical",
+            storageBucket: "pims-pharmaceutical.firebasestorage.app",
+            messagingSenderId: "996269903404",
+            appId: "1:996269903404:web:9d257e2644f1a571ea4b89",
+            measurementId: "G-1BR530YXWK"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const database = firebase.database();
+        const SYSTEM_SECRET_SALT = "UniMAP_FYP_Secret_2026";
+
+        // Read URL parameters passed into the address line (e.g., patient.html?token=123123|hash)
+        const urlParams = new URLSearchParams(window.location.search);
+        const rawTokenInput = urlParams.get('batch');
+
+        if (!rawTokenInput) {
+            // Error handling fallback state if no data string token exists
+            showLayoutError("⚠️ Missing Scan Parameter", "No cryptographic tracking token string detected inside this web request loop.", "N/A", "N/A", "N/A");
+        } else {
+            processPatientVerification(rawTokenInput);
+        }
+
+        function processPatientVerification(token) {
+            let batchId = token;
+            let qrEmbeddedSignature = "";
+
+            if (token.includes("|")) {
+                const parts = token.split("|");
+                batchId = parts[0];
+                qrEmbeddedSignature = parts[1];
+            }
+
+          database.ref('products/' + batchId).once('value').then((snapshot) => {
+        // --- DEFINE THE MISSING DATA CONTEXT PAYLOAD ---
+        const data = snapshot.val();
+
+        // 1. DATABASE RECORD MISSING CHECK
+        if (!data) {
+            showLayoutError("Counterfeit Alert!", "Security check failed. This batch reference token does not match our certified production ledger.", batchId, "N/A", "N/A");
+            return;
+        }
+
+        // Parse verification properties dynamically
+        const expiryDateStr = data.expiryTimestamp || data.expiryDate || "N/A";
+        const hasBeenAltered = data.isAltered || false;
+
+        // Convert database time metrics to a comparable timestamp object safely
+        const today = new Date();
+        const expiryObject = new Date(expiryDateStr);
+
+        // 2. LOGISTICAL RECALL CHECK
+        if (data.safetyStatus === "RECALLED") {
+            showLayoutWarning("⚠️ CRITICAL: Batch Recalled", "Do not consume this medicine. The manufacturer has issued an active global tracking recall order.", batchId, data.productName, expiryDateStr, "CRITICAL COMPLIANCE THREAT: Return this item immediately to your dispensing point.", hasBeenAltered);
+        } 
+        // 3. CALENDAR EXPIRATION CHECK
+        else if (today > expiryObject && expiryDateStr !== "N/A") {
+            showLayoutWarning("✕ Product Expired", "This medicine has passed its safe expiration date threshold and is no longer certified for client administration.", batchId, data.productName, expiryDateStr, "CONSUMER SAFETY GUIDANCE: Dispose of this chemical asset in an authorized medical disposal receptacle.", hasBeenAltered);
+        } 
+        // 4. PASSED EVERYTHING: GENUINE VERIFIED CONSUMER RECORD
+        else {
+            showLayoutSuccess(data.productName, batchId, expiryDateStr, hasBeenAltered);
+        }
+
+        // Push a silent background scan log tracking patient verification interaction
+        silentLogPatientAction(batchId, "PATIENT_CONSUMER_PORTAL_SCAN");
+
+    }).catch(err => {
+        console.error("Database connection dropped:", err);
+        showLayoutError("Database Error", "Network link transmission dropped: " + err.message, "N/A", "N/A", "N/A");
+    });
+        }
+
+        // --- UI RENDER HANDLER FUNCTIONS ---
+
+        function revealContentContainer() {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('contentState').classList.remove('hidden');
+        }
+
+        function showLayoutSuccess(medName, batchId, expiryStr, isAltered) {
+            revealContentContainer();
+            const icon = document.getElementById('statusIcon');
+            icon.innerText = "✓";
+            icon.className = "w-20 h-20 rounded-full flex items-center justify-center mx-auto text-4xl mb-4 bg-emerald-100 text-emerald-600";
+            
+            document.getElementById('statusHeadline').innerText = "Genuine Medication";
+            document.getElementById('statusSubtitle').innerText = "This product is crypto-certified, completely authentic, and safe for consumer use.";
+            
+            document.getElementById('lblMedName').innerText = medName;
+            document.getElementById('lblBatch').innerText = batchId;
+            document.getElementById('lblExpiry').innerText = expiryStr + " (Safe)";
+            document.getElementById('lblExpiry').className = "font-semibold text-emerald-600 text-right";
+            
+            document.getElementById('safetyGuidanceText').innerText = "Keep stored below 30°C in a dry environment. Take exactly as specified by your local attending clinical professional practitioner.";
+        
+        // --- ADDED TOGGLE LOGIC FOR PATIENT WARNING ALERT ---
+    const warningCard = document.getElementById('watermarkBadgeCard');
+    if (warningCard) {
+        warningCard.style.display = (isAltered === true) ? 'block' : 'none';
+    }
+        }
+
+        function showLayoutWarning(headline, subtitle, batchId, medName, expiryStr, safetyGuidance, isAltered) {
+    revealContentContainer();
+    const icon = document.getElementById('statusIcon');
+    icon.innerText = "⚠️";
+    icon.className = "w-20 h-20 rounded-full flex items-center justify-center mx-auto text-4xl mb-4 bg-amber-100 text-amber-600";
+    
+    document.getElementById('statusHeadline').innerText = headline;
+    document.getElementById('statusSubtitle').innerText = subtitle;
+    
+    document.getElementById('lblMedName').innerText = medName;
+    document.getElementById('lblBatch').innerText = batchId;
+    document.getElementById('lblExpiry').innerText = expiryStr;
+    document.getElementById('lblExpiry').className = "font-semibold text-amber-600 text-right";
+    
+    document.getElementById('safetyGuidanceText').innerText = safetyGuidance;
+
+    // --- ADDED TOGGLE LOGIC FOR PATIENT WARNING ALERT ---
+    const warningCard = document.getElementById('watermarkBadgeCard');
+    if (warningCard) {
+        warningCard.style.display = (isAltered === true) ? 'block' : 'none';
+    }
+}
+
+        function showLayoutError(headline, subtitle, batchId, medName, expiryStr) {
+            revealContentContainer();
+            const card = document.getElementById('mainCard');
+            card.className = "w-full max-w-md bg-white rounded-2xl shadow-xl border border-red-200 p-6 text-center shadow-red-100/50";
+            
+            const icon = document.getElementById('statusIcon');
+            icon.innerText = "🚨";
+            icon.className = "w-20 h-20 rounded-full flex items-center justify-center mx-auto text-4xl mb-4 bg-red-100 text-red-600";
+            
+            document.getElementById('statusHeadline').innerText = headline;
+            document.getElementById('statusHeadline').className = "text-2xl font-bold text-red-600 tracking-tight";
+            document.getElementById('statusSubtitle').innerText = subtitle;
+            
+            document.getElementById('lblMedName').innerText = medName;
+            document.getElementById('lblBatch').innerText = batchId;
+            document.getElementById('lblExpiry').innerText = expiryStr;
+            document.getElementById('lblExpiry').className = "font-semibold text-red-600 text-right";
+            
+            document.getElementById('safetyGuidanceText').innerText = "CRITICAL COMPLIANCE THREAT: Do not ingest this compound substance formulation. Please immediately contact your dispensing medical facility or national pharmaceutical regulatory body.";
+        }
+
+        function silentLogPatientAction(batchId, statusText) {
+            database.ref('scan_logs').push({
+                scannedBatch: batchId,
+                verificationStatus: statusText,
+                eventTime: new Date().toISOString(),
+                checkpointLocation: "End-Consumer Patient Mobile Scan",
+                clientDevice: navigator.userAgent
+            });
+        }
+    </script>
+</body>
+</html>

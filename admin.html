@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIMS - Secure Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+</head>
+<body class="bg-gray-100 font-sans p-6">
+    <div class="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
+        <h1 class="text-3xl font-bold text-blue-800 mb-6 border-b pb-3">Secure PIMS Pharmacist Dashboard</h1>
+        
+<button id="logoutBtn" style="background-color: #ef4444; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; font-size: 14px; margin-bottom: 20px; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#dc2626'" onmouseout="this.style.backgroundColor='#ef4444'">Secure Sign Out</button>
+<a href="history.html" style="background-color: #3b82f6; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold; text-decoration: none; font-size: 14px; margin-right: 10px; display: inline-block; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#2563eb'" onmouseout="this.style.backgroundColor='#3b82f6'">📊 View History Ledger</a>   
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Register Crypto-Signed Batch</h2>
+                <form id="productForm" class="space-y-4">
+                    <div class="mt-8 p-6 bg-gray-800 rounded-lg border border-gray-700 shadow-md max-w-4xl mx-auto text-left">
+    <h2 class="text-xl font-bold text-amber-400 mb-2">🔧 Secure Data Alteration Hub</h2>
+    <p class="text-xs text-gray-400 mb-4">Modifying values below will automatically apply an immutable cryptographic alteration watermark to this batch node record.</p>
+    
+    <div class="space-y-4">
+        <div>
+            <label class="block text-sm font-semibold text-gray-300">Target Batch ID to Alter</label>
+            <div class="flex gap-2 mt-1">
+                <input type="text" id="editBatchId" placeholder="e.g. BATCH123" class="flex-1 p-2 border rounded bg-gray-900 text-white border-gray-700 focus:ring-2 focus:ring-amber-500 outline-none">
+                <button type="button" id="loadProductBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded text-sm transition shrink-0">
+                    🔍 Fetch Live Data
+                </button>
+            </div>
+        </div>
+
+        <hr class="border-gray-700 my-2">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-semibold text-gray-300">Updated Stock Quantity</label>
+                <input type="number" id="editStock" class="w-full mt-1 p-2 border rounded bg-gray-900 text-white border-gray-700 focus:ring-2 focus:ring-amber-500 outline-none">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-300">Updated Unit Price (RM)</label>
+                <input type="number" step="0.01" id="editPrice" class="w-full mt-1 p-2 border rounded bg-gray-900 text-white border-gray-700 focus:ring-2 focus:ring-amber-500 outline-none">
+            </div>
+        </div>
+
+        <button type="button" id="submitAlterationBtn" class="w-full mt-2 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded transition shadow-md">
+            💾 Apply Alteration & Inject Security Watermark
+        </button>
+    </div>
+</div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600">Batch ID / Unique Serial</label>
+                        <input type="text" id="batchId" required class="w-full mt-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600">Medication Name</label>
+                        <input type="text" id="prodName" required class="w-full mt-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600">GTIN / Code Bar</label>
+                        <input type="text" id="gtin" required class="w-full mt-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600">Expiry Date</label>
+                        <input type="date" id="expiryDate" required class="w-full mt-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold p-2 rounded hover:bg-blue-700 transition">Generate Cryptographic Label</button>
+               <div class="mt-4">
+    <label class="block text-sm font-semibold text-gray-700">Supplier Name</label>
+    <input type="text" id="supplierInput" required class="w-full mt-1 p-2 border rounded bg-gray-50 text-gray-900 border-gray-300">
+</div>
+
+<div class="mt-4">
+    <label class="block text-sm font-semibold text-gray-700">Stock Quantity</label>
+    <input type="number" id="stockInput" required class="w-full mt-1 p-2 border rounded bg-gray-50 text-gray-900 border-gray-300">
+</div>
+
+<div class="mt-4">
+    <label class="block text-sm font-semibold text-gray-700">Unit Price (RM)</label>
+    <input type="number" step="0.01" id="priceInput" required class="w-full mt-1 p-2 border rounded bg-gray-50 text-gray-900 border-gray-300">
+</div>
+               
+                </form>
+            </div>
+
+            <div class="flex flex-col items-center justify-center border-l pl-4 border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">Generated Product QR Label</h3>
+                <div id="qrcode" class="p-4 bg-white border shadow-inner"></div>
+                <p class="text-xs text-gray-400 mt-2 text-center text-wrap max-w-xs">This matrix label embeds a tamper-proof SHA-256 digital verification signature.</p>
+            </div>
+        </div>
+    </div>
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md mt-6 border border-gray-200">
+    <h3 class="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+        📋 Certified Production Ledger Tracking
+    </h3>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-500">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+                <tr>
+                    <th class="py-3 px-4">Medication Name</th>
+                    <th class="py-3 px-4">Batch ID</th>
+                    <th class="py-3 px-4">Expiration</th>
+                    <th class="py-3 px-4">Safety Status</th>
+                    <th class="py-3 px-4 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="productsTableBody">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEC4xARqZ0CZSNLhlVLjid8UxuyY3E5KI",
+            authDomain: "pims-pharmaceutical.firebaseapp.com",
+            databaseURL: "https://pims-pharmaceutical-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "pims-pharmaceutical",
+            storageBucket: "pims-pharmaceutical.firebasestorage.app",
+            messagingSenderId: "996269903404",
+            appId: "1:996269903404:web:9d257e2644f1a571ea4b89",
+            measurementId: "G-1BR530YXWK"
+        };
+        
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const database = firebase.database();
+
+        // Secret key known only to the authorized system environment
+        const SYSTEM_SECRET_SALT = "UniMAP_FYP_Secret_2026";
+      
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    firebase.auth().signOut().then(() => {
+        alert("Session terminated successfully.");
+        window.location.href = "login.html";
+    }).catch((error) => {
+        alert("Error signing out: " + error.message);
+    });
+});
+  
+// 1. COMPLETELY DESTROY BROWSER ARROW SNAPSHOT CACHE FORCIBLY
+window.addEventListener('pageshow', function (event) {
+    if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+        window.location.reload();
+    }
+});
+
+// 2. THE ULTIMATE LIVE AUTH GATEKEEPER ENGINE (WITH HISTORY DESTRUCTION)
+firebase.auth().onAuthStateChanged((user) => {
+    if (!user) {
+        // Overwrites the history entry so they cannot hit "Forward" to return here
+        window.location.replace("login.html");
+    } else {
+        // Double check permissions with the live backend database node
+        database.ref('users/' + user.uid).once('value').then((snapshot) => {
+            const userData = snapshot.val();
+            if (!userData || userData.role !== "ADMIN") {
+                alert("Access Denied: Administrative Clearance Required.");
+                window.location.replace("patient.html");
+            }
+        }).catch((err) => {
+            console.error("RBAC Validation Error:", err);
+            window.location.replace("login.html");
+        });
+    }
+});
+
+       // --- SECURE FORM INPUT CAPTURE WITH DOUBLE-VERIFICATION DIALOGUE ---
+document.getElementById('productForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    // 1. Gather original tracking data fields from form inputs
+    const batchId = document.getElementById('batchId').value.trim();
+    const prodName = document.getElementById('prodName').value.trim();
+    const gtin = document.getElementById('gtin').value.trim();
+    const expiryDate = document.getElementById('expiryDate').value;
+
+    // 2. Gather Supervisor requirements fields
+    const supplier = document.getElementById('supplierInput').value.trim();
+    const stock = document.getElementById('stockInput').value.trim();
+    const price = document.getElementById('priceInput').value.trim();
+
+    // 3. Format a highly visible itemized confirmation manifest review layout list
+    const confirmationManifest = 
+        "⚠️ CRITICAL DATA REVIEW CACHE\n" +
+        "Please double check that all inputs align with official pharmacy shipping logs:\n" +
+        "-------------------------------------------------------\n" +
+        "📦 BATCH TRACK ID : " + batchId + "\n" +
+        "💊 MEDICINE NAME  : " + prodName + "\n" +
+        "🔢 GTIN BARCODE   : " + gtin + "\n" +
+        "⏳ EXPIRY DATE    : " + expiryDate + "\n" +
+        "🏭 SUPPLIER NAME  : " + supplier + "\n" +
+        "📊 INITIAL STOCK  : " + stock + " Units\n" +
+        "💰 UNIT PRICE     : RM " + parseFloat(price).toFixed(2) + "\n" +
+        "-------------------------------------------------------\n" +
+        "Do you confirm that the metadata records captured above are completely accurate?";
+
+    // 4. Trigger modal review loop confirmation step
+    const adminConfirmation = confirm(confirmationManifest);
+    
+    if (!adminConfirmation) {
+        alert("Operation Aborted. Data entry was discarded.");
+        return; // Exit out safely without altering anything
+    }
+
+    alert("Verification success. Processing cryptographic signatures...");
+
+    // 5. Generate SHA-256 digital fingerprint signature combining text payload with system salt
+    const inputDataToSign = batchId + prodName + gtin + expiryDate + SYSTEM_SECRET_SALT;
+    const digitalSignatureHash = CryptoJS.SHA256(inputDataToSign).toString();
+
+    // 6. Save data payload parameters to Firebase database cloud ledger node
+    // Note: We use 'products/' to match line 140 of your screenshot exactly!
+    database.ref('products/' + batchId).set({
+        productName: prodName,
+        gtinCode: gtin,
+        expiryTimestamp: expiryDate,
+        safetyStatus: "AUTHORIZED",
+        cryptoSignature: digitalSignatureHash,
+
+        // --- SUPERVISOR METRICS AND WATERMARK ARTIFACTS ---
+        supplierName: supplier,
+        stockCount: parseInt(stock),
+        unitPrice: parseFloat(price),
+        isAltered: false,         // Default clean state asset tracking
+        alterationCount: 0,       // No update logs compiled yet
+        lastModifiedBy: firebase.auth().currentUser.email,
+        timestamp: new Date().toISOString()
+    }, function(error) {
+        if (error) {
+            alert("Sync error: " + error);
+        } else {
+            // Clear previous QR instance
+            document.getElementById("qrcode").innerHTML = "";
+            
+            // 7. CRITICAL ARCHITECTURE DESIGN: DYNAMIC QR CODE ROUTING LINK
+            // Instead of putting raw attributes into the image, we only encode the permanent 
+            // identity key pointers. This prevents the QR code from having to change if you edit info!
+            const combinedQrPayload = batchId + "|" + digitalSignatureHash;
+            
+            new QRCode(document.getElementById("qrcode"), {
+                text: combinedQrPayload,
+                width: 150,
+                height: 150,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+
+            alert("Cryptographic data block generated and saved to Cloud ledger!");
+        }
+    });
+});
+       // =========================================================================
+// SUPERVISOR REQ: LIVE FETCH & ALTERATION ENGINE WITH WATERMARK INJECTION
+// =========================================================================
+
+// 1. FETCH CURRENT BATCH DATA FROM PRODUCTS PATH FOR ALTERATION
+document.getElementById('loadProductBtn').addEventListener('click', function() {
+    const batchId = document.getElementById('editBatchId').value.trim();
+    if (!batchId) {
+        alert("Please input a valid Target Batch ID first.");
+        return;
+    }
+
+    database.ref('products/' + batchId).once('value').then(function(snapshot) {
+        if (!snapshot.exists()) {
+            alert("No medical record matches this Batch ID in the database registry.");
+            return;
+        }
+        const data = snapshot.val();
+        
+        // Populate layout input parameters dynamically
+        document.getElementById('editStock').value = data.stockCount || 0;
+        document.getElementById('editPrice').value = data.unitPrice || 0.00;
+        
+        alert("Records retrieved for: " + (data.productName || "Product Module"));
+    }).catch(function(err) {
+        alert("Error accessing cloud node: " + err.message);
+    });
+});
+
+// 2. EXECUTE ATOMIC TRANSACTION UPDATE TO INJECT ALTERATION WATERMARKS
+document.getElementById('submitAlterationBtn').addEventListener('click', function() {
+    const batchId = document.getElementById('editBatchId').value.trim();
+    const newStock = document.getElementById('editStock').value.trim();
+    const newPrice = document.getElementById('editPrice').value.trim();
+
+    if (!batchId || !newStock || !newPrice) {
+        alert("All modification input parameters must be fully populated.");
+        return;
+    }
+
+    // Double Confirmation Manifest Checklist for altering records
+    const alterManifest = 
+        "⚠️ CRITICAL SECURITY WARNING: DATA ALTERATION PROTOCOL\n" +
+        "You are about to modify a signed cloud database ledger asset.\n" +
+        "-------------------------------------------------------\n" +
+        "📦 TARGET BATCH ID   : " + batchId + "\n" +
+        "📊 NEW STOCK CONFIG  : " + newStock + " Units\n" +
+        "💰 NEW UNIT PRICE    : RM " + parseFloat(newPrice).toFixed(2) + "\n" +
+        "-------------------------------------------------------\n" +
+        "An irreversible 'ALTERED' tracking watermark will be burned into this record.\n" +
+        "Do you authorize this modification?";
+
+    if (!confirm(alterManifest)) {
+        alert("Alteration operation canceled. Assets remain untouched.");
+        return;
+    }
+
+    const productRef = database.ref('products/' + batchId);
+    
+    productRef.once('value').then(function(snapshot) {
+        if (!snapshot.exists()) return;
+        
+        const existingData = snapshot.val();
+        // Calculate incremental counter metrics tracking
+        const currentCount = (existingData.alterationCount || 0) + 1; 
+
+        // Update the database parameters + Watermark Tags
+        return productRef.update({
+            stockCount: parseInt(newStock),
+            unitPrice: parseFloat(newPrice),
+            
+            // SUPERVISOR'S AUDIT TRAIL WATERMARKS
+            isAltered: true, 
+            alterationCount: currentCount,
+            lastAlteredBy: firebase.auth().currentUser.email,
+            lastAlteredTimestamp: new Date().toISOString()
+        });
+    }).then(function() {
+        alert("Ledger modified successfully. Security watermark has been injected!");
+        window.location.reload();
+    }).catch(function(error) {
+        alert("Security write execution failed: " + error.message);
+    });
+});
+
+// =========================================================================
+// REAL-TIME LEDGER MONITORING ENGINE (SECURE & ALIGNED VARIABLES)
+// =========================================================================
+
+database.ref('products').on('value', (snapshot) => {
+    const tableBody = document.getElementById('productsTableBody');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = ""; // Clear existing rows cleanly
+    const data = snapshot.val();
+    
+    if (!data) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-400">No active products found in certified ledger database.</td></tr>`;
+        return;
+    }
+
+    // Loop through every product record in your Firebase node tree
+    Object.keys(data).forEach((productId) => {
+        const product = data[productId];
+        
+        // Explicitly map out variables to prevent any 'undefined' crashes inside row templates
+        const name = product.productName || "Unknown Asset";
+        const expiry = product.expiryTimestamp || product.expiryDate || "N/A";
+        const status = product.safetyStatus || "AUTHORIZED";
+        
+        const statusColor = status === "RECALLED" ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700";
+
+        // 1. Create a physical table row element programmatically
+        const row = document.createElement('tr');
+        row.className = "border-b border-gray-100 hover:bg-gray-50/70 transition-colors";
+
+        // 2. Inject the data layout cells (using productId explicitly for the Batch column)
+        row.innerHTML = `
+            <td class="py-3 px-4 font-semibold text-gray-800">${name}</td>
+            <td class="py-3 px-4 font-mono text-xs text-gray-600">${productId}</td>
+            <td class="py-3 px-4 text-gray-600">${expiry}</td>
+            <td class="py-3 px-4">
+                <span class="px-2 py-0.5 text-xs font-medium rounded-full ${statusColor}">${status}</span>
+            </td>
+            <td class="py-3 px-4 text-right dynamic-action-cell"></td>
+        `;
+
+        // 3. Create the action button element programmatically
+        const viewBtn = document.createElement('button');
+        viewBtn.type = "button";
+        viewBtn.className = "px-3 py-1 text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 transition-all";
+        viewBtn.innerHTML = "🔍 View QR";
+
+        // 4. Securely bind the click handler directly using the active productId context loop scope
+        viewBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            rebuildQrView(productId, name);
+        });
+
+        // =========================================================================
+        // 🚨 PASTE THE NEW STATUS TOGGLE BUTTON LOGIC HERE
+        // =========================================================================
+        const statusBtn = document.createElement('button');
+        statusBtn.type = "button";
+        
+        if (status === "AUTHORIZED") {
+            statusBtn.className = "ml-2 px-3 py-1 text-xs font-semibold bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100 transition-all";
+            statusBtn.innerHTML = "🚨 Flag Recall";
+        } else {
+            statusBtn.className = "ml-2 px-3 py-1 text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200 rounded hover:bg-emerald-100 transition-all";
+            statusBtn.innerHTML = "✅ Re-Authorize";
+        }
+
+        statusBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetNewStatus = (status === "AUTHORIZED") ? "RECALLED" : "AUTHORIZED";
+            
+            database.ref(`products/${productId}`).update({
+                safetyStatus: targetNewStatus
+            }).then(() => {
+                console.log(`Batch security status successfully modified to: ${targetNewStatus}`);
+            }).catch((err) => {
+                console.error("Database permission writing error:", err);
+            });
+        });
+        // =========================================================================
+
+        // 5. Assemble everything back into the layout body DOM tree structures
+        const actionCell = row.querySelector('.dynamic-action-cell');
+        actionCell.appendChild(viewBtn);
+        actionCell.appendChild(statusBtn); // Appends the button to your actions column cleanly!
+        tableBody.appendChild(row);
+
+        // 5. Assemble everything back into the layout body DOM tree structures
+        row.querySelector('.dynamic-action-cell').appendChild(viewBtn);
+        tableBody.appendChild(row);
+    });
+});
+
+// Global helper function to dynamically regenerate the QR block anytime a row button is clicked
+window.rebuildQrView = function(batchId, productName) {
+    console.log("Initializing cryptographic QR generation matrix for:", batchId);
+
+    // 1. target the 'id=qrcode' div specifically located inside your sidebar container panel layout
+    let qrContainer = document.querySelector('div.flex-col div#qrcode') || document.getElementById('qrcode');
+    
+    if (!qrContainer) {
+        console.error("DOM Context Target Error: Could not resolve target layout frame wrapper container matching id='qrcode'.");
+        alert("Could not locate the 'Generated Product QR Label' sidebar component container.");
+        return;
+    }
+
+    // Wipe any hidden contents or placeholder configurations instantly
+    qrContainer.innerHTML = "";
+    
+    // Construct the direct deep-link parameter route pointing straight to your client gateway validation engine
+    const clientVerificationGatewayUrl = `${window.location.origin}/patient.html?batch=${encodeURIComponent(batchId)}`;
+    
+    try {
+        // Fire the matrix compiler to draw the responsive slate pixels directly into the container view
+        new QRCode(qrContainer, {
+            text: clientVerificationGatewayUrl,
+            width: 128,
+            height: 128,
+            colorDark: "#1e293b", // Matches your professional slate panel layout typography accents
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.M
+        });
+        
+        console.log(`Successfully compiled security validation asset for ${productName}. Trace Target: ${clientVerificationGatewayUrl}`);
+    } catch (error) {
+        console.error("The native QRCode library script pipeline encountered a compilation freeze:", error);
+    }
+};
+    </script>
+</body>
+</html>

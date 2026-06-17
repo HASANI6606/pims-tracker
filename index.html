@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIMS - Mobile Crypto-Scanner Client</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col items-center p-4">
+
+    <header class="w-full max-w-md my-4 text-center">
+        <h1 class="text-2xl font-bold text-emerald-400">PIMS Crypto-Scanner</h1>
+        <p class="text-xs text-slate-400 mt-1">Verifying cryptographic digital signatures against cloud data</p>
+    </header>
+
+    <main class="w-full max-w-md bg-slate-800 rounded-xl overflow-hidden shadow-2xl border border-slate-700 p-4">
+        <div id="reader" class="w-full bg-black rounded-lg" style="min-height: 250px;"></div>
+        
+        <button id="resetBtn" class="hidden mt-4 w-full bg-emerald-600 text-white font-bold p-3 rounded-lg hover:bg-emerald-700 transition">
+            Scan Another Product
+        </button>
+    </main>
+
+    <section id="resultCard" class="hidden w-full max-w-md mt-6 p-5 rounded-xl border shadow-xl transition-all">
+        <h2 id="statusTitle" class="text-xl font-bold mb-3"></h2>
+        
+        <div class="space-y-2 text-sm">
+            <p><span class="text-slate-400">Scanned Batch ID:</span> <span id="resBatch" class="font-mono font-bold"></span></p>
+            <p><span class="text-slate-400">Medication Name:</span> <span id="resName" class="font-semibold"></span></p>
+            <p><span class="text-slate-400">GTIN Code Bar:</span> <span id="resGtin" class="font-mono"></span></p>
+            <p><span class="text-slate-400">Expiration Date:</span> <span id="resExpiry" class="font-semibold"></span></p>
+        </div>
+    </section>
+
+   <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEC4xARqZ0CZSNLhlVLjid8UxuyY3E5KI",
+            authDomain: "pims-pharmaceutical.firebaseapp.com",
+            databaseURL: "https://pims-pharmaceutical-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "pims-pharmaceutical",
+            storageBucket: "pims-pharmaceutical.firebasestorage.app",
+            messagingSenderId: "996269903404",
+            appId: "1:996269903404:web:9d257e2644f1a571ea4b89",
+            measurementId: "G-1BR530YXWK"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const database = firebase.database();
+        const SYSTEM_SECRET_SALT = "UniMAP_FYP_Secret_2026";
+
+        const html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+            fps: 10, 
+            qrbox: { width: 220, height: 220 },
+            rememberLastUsedCamera: true
+        });
+
+        // Advanced Track & Trace Audit Logging Engine
+        function createAuditLog(batchId, statusText) {
+            const timestampString = new Date().toISOString();
+            const deviceMetadata = navigator.userAgent;
+            
+            // Array of simulated transit checkpoints to create a realistic supply chain history
+            const simulatedLocations = [
+                "Main Distribution Warehouse (Kuala Lumpur)",
+                "Northern Region Transit Hub (Penang)",
+                "UniMAP Health Centre Dispensary (Perlis)",
+                "State General Hospital Ward Pharmacy"
+            ];
+            
+            // Pick a random checkpoint location from the array to simulate moving stock
+            const assignedLocation = simulatedLocations[Math.floor(Math.random() * simulatedLocations.length)];
+
+            // Securely append this dynamic trace log directly to your cloud tree
+            database.ref('scan_logs').push({
+                scannedBatch: batchId,
+                verificationStatus: statusText,
+                eventTime: timestampString,
+                checkpointLocation: assignedLocation,
+                clientDevice: deviceMetadata
+            });
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            html5QrcodeScanner.clear();
+            document.getElementById('resetBtn').classList.remove('hidden');
+
+            const rawPayload = decodedText.trim();
+            let batchId = rawPayload;
+            let qrEmbeddedSignature = "";
+
+            if (rawPayload.includes("|")) {
+                const pieces = rawPayload.split("|");
+                batchId = pieces[0];
+                qrEmbeddedSignature = pieces[1];
+            }
+            
+            database.ref('products/' + batchId).once('value').then((snapshot) => {
+                const data = snapshot.val();
+                const card = document.getElementById('resultCard');
+                
+                card.classList.remove('hidden');
+                
+                if (data) {
+                    const dataToVerify = batchId + data.productName + data.gtinCode + data.expiryTimestamp + SYSTEM_SECRET_SALT;
+                    const computedDatabaseSignature = CryptoJS.SHA256(dataToVerify).toString();
+
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    const expiryDate = new Date(data.expiryTimestamp);
+
+                    if (qrEmbeddedSignature !== computedDatabaseSignature) {
+                        document.getElementById('statusTitle').innerText = "❌ FRAUD DETECTED: DATA TAMPERING";
+                        card.className = "w-full max-w-md mt-6 p-5 rounded-xl border bg-red-950/70 border-red-500 text-red-200 animate-bounce";
+                        
+                        createAuditLog(batchId, "CRITICAL_FRAUD_ALERT");
+                    
+                    } else if (data.safetyStatus === "RECALLED") {
+                        document.getElementById('statusTitle').innerText = "❌ CRITICAL: BATCH RECALLED";
+                        card.className = "w-full max-w-md mt-6 p-5 rounded-xl border bg-red-950/60 border-red-600 text-red-200 animate-pulse";
+                        
+                        createAuditLog(batchId, "BLOCKED_RECALLED_BATCH");
+                    
+                    } else if (today > expiryDate) {
+                        document.getElementById('statusTitle').innerText = "❌ EXPIRED: UNSAFE FOR USE";
+                        card.className = "w-full max-w-md mt-6 p-5 rounded-xl border bg-amber-950/60 border-amber-600 text-amber-200";
+                        
+                        createAuditLog(batchId, "BLOCKED_EXPIRED_BATCH");
+                    
+                    } else {
+                        document.getElementById('statusTitle').innerText = "✓ Crypto-Verified & Authentic";
+                        card.className = "w-full max-w-md mt-6 p-5 rounded-xl border bg-emerald-950/40 border-emerald-500 text-emerald-200";
+                        
+                        createAuditLog(batchId, "SUCCESSFUL_AUTHENTICATION");
+                    }
+                    
+                    document.getElementById('resBatch').innerText = batchId;
+                    document.getElementById('resName').innerText = data.productName;
+                    document.getElementById('resGtin').innerText = data.gtinCode;
+                    document.getElementById('resExpiry').innerText = data.expiryTimestamp;
+                    
+                } else {
+                    document.getElementById('statusTitle').innerText = "⚠ Warning: Unknown Batch File";
+                    card.className = "w-full max-w-md mt-6 p-5 rounded-xl border bg-rose-950/40 border-rose-500 text-rose-200";
+                    
+                    createAuditLog(batchId, "UNKNOWN_PRODUCT_WARNING");
+                    
+                    document.getElementById('resBatch').innerText = batchId;
+                    document.getElementById('resName').innerText = "NOT FOUND IN REGISTRY DATABASE";
+                    document.getElementById('resGtin').innerText = "UNKNOWN TRACE ELEMENT";
+                    document.getElementById('resExpiry').innerText = "N/A";
+                }
+            }).catch((err) => {
+                alert("Cloud tracking network log error: " + err.message);
+            });
+        }
+
+        html5QrcodeScanner.render(onScanSuccess);
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            document.getElementById('resetBtn').classList.add('hidden');
+            document.getElementById('resultCard').classList.add('hidden');
+            html5QrcodeScanner.render(onScanSuccess);
+        });
+    </script>
+</body>
+</html>
